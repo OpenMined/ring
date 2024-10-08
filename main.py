@@ -39,11 +39,12 @@ class RingRunner:
 
     def check_datafile_exists(self):
         files = []
+        print(f"Please put your data files in {self.running_folder}.")
         for file in os.listdir(self.running_folder):
             if file.endswith(".json"):
                 print("There is a file here.")
                 files.append(os.path.join(self.running_folder, file))
-        print(f"Found {len(files)} files.")
+        print(f"Found {len(files)} files in {self.running_folder}.")
         return files
 
     def data_read_and_increment(self, file_name):
@@ -83,6 +84,7 @@ class RingRunner:
             / "running"
             / "data.json"
         )
+        print(f"Writing to {output_path}.")
         self.data_writer(output_path, datum)
 
     def terminate_ring(self):
