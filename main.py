@@ -26,6 +26,7 @@ class RingRunner:
         self.running_folder = self.my_home / "running"
         self.done_folder = self.my_home / "done"
         self.folders = [self.running_folder, self.done_folder]
+        self.secret_file = Path(os.path.abspath(__file__)).parent / "secret.txt"
 
     def setup_folders(self):
         print("Setting up the necessary folders.")
@@ -59,7 +60,12 @@ class RingRunner:
         else:
             to_send_email = ring_participants[to_send_idx]
 
-        data["data"] = datum + 1
+        # Read the secret value from secret.txt
+        with open(self.secret_file, 'r') as secret_file:
+            secret_value = int(secret_file.read().strip())
+
+        # Increment datum by the secret value instead of 1
+        data["data"] = datum + secret_value
         data["current_index"] = to_send_idx
         os.remove(file_name)
         return data, to_send_email
