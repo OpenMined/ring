@@ -6,5 +6,5 @@ if [ ! -d ".venv" ]; then
 else
     echo "Virtual environment already exists."
 fi
-uv pip install http://20.168.10.234:8080/wheel/syftbox-0.1.0-py3-none-any.whl
+# uv pip install http://20.168.10.234:8080/wheel/syftbox-0.1.0-py3-none-any.whl
 uv run python main.py

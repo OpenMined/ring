@@ -1,28 +1,20 @@
 import os
 from pathlib import Path
 import json
-from syftbox.lib import ClientConfig
+from syftbox.lib import ClientConfig, SyftPermission
 
 
 class RingRunner:
     def __init__(self):
-        self.client_config = ClientConfig.load(
-            os.path.expanduser("~/.syftbox/client_config.json")
-        )
+        config_path = os.environ.get("SYFTBOX_CLIENT_CONFIG_PATH", None)
+        self.client_config = ClientConfig.load(config_path)
         self.my_email = self.client_config["email"]
-        self.my_home = (
-            Path(self.client_config["sync_folder"])
-            / self.my_email
-            / "app_pipelines"
-            / "ring"
+        self.my_home = Path(self.client_config.datasite_path) / "app_pipelines" / "ring"
+
+        self.permission = SyftPermission.mine_with_public_write(
+            self.client_config.email
         )
-        self.syft_perm_json = {
-            "admin": [self.my_email],
-            "read": [self.my_email, "GLOBAL"],
-            "write": [self.my_email, "GLOBAL"],
-            "filepath": str(self.my_home / "_.syftperm"),
-            "terminal": False,
-        }
+
         self.running_folder = self.my_home / "running"
         self.done_folder = self.my_home / "done"
         self.folders = [self.running_folder, self.done_folder]
@@ -34,8 +26,8 @@ class RingRunner:
             os.makedirs(folder, exist_ok=True)
             with open(folder / "dummy", "w") as f:
                 pass
-        with open(self.my_home / "_.syftperm", "w") as f:
-            json.dump(self.syft_perm_json, f)
+
+        self.permission.ensure(self.my_home)
 
     def check_datafile_exists(self):
         files = []
@@ -62,7 +54,7 @@ class RingRunner:
             to_send_email = ring_participants[to_send_idx]
 
         # Read the secret value from secret.txt
-        with open(self.secret_file, 'r') as secret_file:
+        with open(self.secret_file, "r") as secret_file:
             secret_value = int(secret_file.read().strip())
 
         # Increment datum by the secret value instead of 1
@@ -77,7 +69,8 @@ class RingRunner:
 
     def send_to_new_person(self, to_send_email, datum):
         output_path = (
-            Path(os.path.abspath(__file__)).parent.parent.parent
+            Path(self.client_config.sync_dir)
+            / to_send_email
             / to_send_email
             / "app_pipelines"
             / "ring"
