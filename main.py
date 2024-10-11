@@ -7,7 +7,7 @@ from syftbox.lib import ClientConfig
 class RingRunner:
     def __init__(self):
         self.client_config = ClientConfig.load(
-            os.path.expanduser("~/.syftbox/client_config.json")
+            os.getenv("SYFTBOX_CLIENT_CONFIG_PATH", None)
         )
         self.my_email = self.client_config["email"]
         self.my_home = (
@@ -77,7 +77,7 @@ class RingRunner:
 
     def send_to_new_person(self, to_send_email, datum):
         output_path = (
-            Path(os.path.abspath(__file__)).parent.parent.parent
+            Path(self.client_config['sync_folder'])
             / to_send_email
             / "app_pipelines"
             / "ring"
