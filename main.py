@@ -1,41 +1,35 @@
 import os
 from pathlib import Path
 import json
-from syftbox.lib import ClientConfig
+from syftbox.lib import Client, SyftPermission
+import diffprivlib.tools as dp
 
 
 class RingRunner:
     def __init__(self):
-        self.client_config = ClientConfig.load(
-            os.path.expanduser("~/.syftbox/client_config.json")
-        )
+        self.client_config = Client.load()
         self.my_email = self.client_config["email"]
-        self.my_home = (
-            Path(self.client_config["sync_folder"])
-            / self.my_email
-            / "app_pipelines"
-            / "ring"
+        self.my_home = Path(self.client_config.datasite_path) / "app_pipelines" / "ring"
+
+        self.permission = SyftPermission.mine_with_public_write(
+            self.client_config.email
         )
-        self.syft_perm_json = {
-            "admin": [self.my_email],
-            "read": [self.my_email, "GLOBAL"],
-            "write": [self.my_email, "GLOBAL"],
-            "filepath": str(self.my_home / "_.syftperm"),
-            "terminal": False,
-        }
+
         self.running_folder = self.my_home / "running"
         self.done_folder = self.my_home / "done"
         self.folders = [self.running_folder, self.done_folder]
-        self.secret_file = Path(os.path.abspath(__file__)).parent / "secret.txt"
+        self.secret_file = Path(os.path.abspath(__file__)).parent / "secret.json"
 
     def setup_folders(self):
         print("Setting up the necessary folders.")
         for folder in self.folders:
             os.makedirs(folder, exist_ok=True)
-            with open(folder / "dummy", "w") as f:
-                pass
-        with open(self.my_home / "_.syftperm", "w") as f:
-            json.dump(self.syft_perm_json, f)
+            # no need for dummy files if the folders get created before writing
+            # with the data_writer as the permission file allows it
+
+        self.permission.ensure(
+            self.my_home
+        )  # less noisy since it only writes if needed
 
     def check_datafile_exists(self):
         files = []
@@ -62,22 +56,33 @@ class RingRunner:
             to_send_email = ring_participants[to_send_idx]
 
         # Read the secret value from secret.txt
-        with open(self.secret_file, 'r') as secret_file:
-            secret_value = int(secret_file.read().strip())
+        with open(self.secret_file, "r") as secret_file:
+            secret_data = json.load(secret_file)
+            # secret_value = int(secret_file.read().strip())
 
-        # Increment datum by the secret value instead of 1
-        data["data"] = datum + secret_value
+        data["data"] = datum + dp.mean(
+            secret_data["data"],
+            epsilon=float(secret_data["epsilon"]),
+            bounds=(float(secret_data["bound_min"]), float(secret_data["bound_max"])),
+        )
         data["current_index"] = to_send_idx
         os.remove(file_name)
         return data, to_send_email
 
     def data_writer(self, file_name, result):
+        # should make sure the folder exists here so that they don't need dummy files
+        folder_path = os.path.dirname(file_name)
+
+        if not os.path.exists(folder_path):
+            # less noisy since it only writes if needed
+            os.makedirs(folder_path, exist_ok=True)
+
         with open(file_name, "w") as f:
             json.dump(result, f)
 
     def send_to_new_person(self, to_send_email, datum):
         output_path = (
-            Path(os.path.abspath(__file__)).parent.parent.parent
+            Path(self.client_config.sync_folder)
             / to_send_email
             / "app_pipelines"
             / "ring"

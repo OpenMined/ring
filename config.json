@@ -8,7 +8,7 @@
     },
     "env": {},
     "platforms": ["linux", "darwin"],
-    "pre_install": [],
+    "pre_install": ["uv", "pip", "install", "diffprivlib"],
     "post_install": ["python", "input.py"],
     "pre_update": [],
     "post_update": []

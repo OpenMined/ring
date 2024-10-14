@@ -1,10 +1,7 @@
 #!/bin/sh
-if [ ! -d ".venv" ]; then
-    echo "Virtual environment not found. Creating one..."
-    uv venv .venv
-    echo "Virtual environment created successfully."
-else
-    echo "Virtual environment already exists."
-fi
-uv pip install http://20.168.10.234:8080/wheel/syftbox-0.1.0-py3-none-any.whl
+uv venv --allow-existing
+# this will use syftbox coming from the app runner by default
+# if that fails it will locate syftbox using the global uv tool path
+# which ensures you get editable mode and stand-alone running in one line
+uv run python -c 'import syftbox' 2>/dev/null || export PYTHONPATH=$(uv tool run syftbox path):$PYTHONPATH
 uv run python main.py
