@@ -1,13 +1,12 @@
 import os
 from pathlib import Path
 import json
-from syftbox.lib import ClientConfig, SyftPermission
+from syftbox.lib import Client, SyftPermission
 
 
 class RingRunner:
     def __init__(self):
-        config_path = os.environ.get("SYFTBOX_CLIENT_CONFIG_PATH", None)
-        self.client_config = ClientConfig.load(config_path)
+        self.client_config = Client.load()
         self.my_email = self.client_config["email"]
         self.my_home = Path(self.client_config.datasite_path) / "app_pipelines" / "ring"
 
@@ -24,10 +23,12 @@ class RingRunner:
         print("Setting up the necessary folders.")
         for folder in self.folders:
             os.makedirs(folder, exist_ok=True)
-            with open(folder / "dummy", "w") as f:
-                pass
+            # no need for dummy files if the folders get created before writing
+            # with the data_writer as the permission file allows it
 
-        self.permission.ensure(self.my_home)
+        self.permission.ensure(
+            self.my_home
+        )  # less noisy since it only writes if needed
 
     def check_datafile_exists(self):
         files = []
@@ -64,13 +65,19 @@ class RingRunner:
         return data, to_send_email
 
     def data_writer(self, file_name, result):
+        # should make sure the folder exists here so that they don't need dummy files
+        folder_path = os.path.dirname(file_name)
+
+        if not os.path.exists(folder_path):
+            # less noisy since it only writes if needed
+            os.makedirs(folder_path, exist_ok=True)
+
         with open(file_name, "w") as f:
             json.dump(result, f)
 
     def send_to_new_person(self, to_send_email, datum):
         output_path = (
-            Path(self.client_config.sync_dir)
-            / to_send_email
+            Path(self.client_config.sync_folder)
             / to_send_email
             / "app_pipelines"
             / "ring"
