@@ -1,113 +1,105 @@
 import os
 from pathlib import Path
-import json
+from typing import List
 from syftbox.lib import Client, SyftPermission
+from pydantic import BaseModel
+from pydantic_core import from_json
 
+
+RING_APP_PATH = Path(os.path.abspath(__file__)).parent
+
+
+class RingData(BaseModel):
+    ring: list[str]
+    data: int
+    current_index: int
+
+    @property
+    def ring_length(self) -> int:
+        return len(self.ring)
+
+    @classmethod
+    def load_json(cls, file):
+        with open(file, "r") as f:
+            return cls(**from_json(f.read()))
 
 class RingRunner:
     def __init__(self):
-        self.client_config = Client.load()
-        self.my_email = self.client_config["email"]
-        self.my_home = Path(self.client_config.datasite_path) / "app_pipelines" / "ring"
+        self.client = Client.load()
 
-        self.permission = SyftPermission.mine_with_public_write(
-            self.client_config.email
-        )
+        self.my_email: str = self.client.email
+        
+        # this is where all the app state goes
+        self.ring_pipeline_path: Path = Path(self.client.datasite_path) / "app_pipelines" / "ring"
+        # this is where the pending inputs go
+        self.running_folder: Path = self.ring_pipeline_path / "running"
+        # this is where the final result goes of a completed ring
+        self.done_folder: Path = self.ring_pipeline_path / "done"
+        # this is your personal secret
+        self.secret_file: Path = RING_APP_PATH / "secret.txt"
 
-        self.running_folder = self.my_home / "running"
-        self.done_folder = self.my_home / "done"
-        self.folders = [self.running_folder, self.done_folder]
-        self.secret_file = Path(os.path.abspath(__file__)).parent / "secret.txt"
+    def run(self) -> None:
+        self.setup_folders()
+        input_files = self.pending_inputs_files()
+        for file_name in input_files:
+            self.process_input(file_name)
 
-    def setup_folders(self):
-        print("Setting up the necessary folders.")
-        for folder in self.folders:
-            os.makedirs(folder, exist_ok=True)
-            # no need for dummy files if the folders get created before writing
-            # with the data_writer as the permission file allows it
+        if len(input_files) == 0:
+            print("No data file found. As you were, soldier.")
+        
+    def process_input(self, file_path) -> None:
+        print(f"Found input {file_path}! Let's get to work.")
 
-        self.permission.ensure(
-            self.my_home
-        )  # less noisy since it only writes if needed
+        ring_data = RingData.load_json(file_path)
 
-    def check_datafile_exists(self):
-        files = []
-        print(f"Please put your data files in {self.running_folder}.")
-        for file in os.listdir(self.running_folder):
-            if file.endswith(".json"):
-                print("There is a file here.")
-                files.append(os.path.join(self.running_folder, file))
-        print(f"Found {len(files)} files in {self.running_folder}.")
-        return files
+        ring_data.data += self.my_secret()
 
-    def data_read_and_increment(self, file_name):
-        with open(file_name) as f:
-            data = json.load(f)
-
-        ring_participants = data["ring"]
-        datum = data["data"]
-        to_send_idx = data["current_index"] + 1
-
-        if to_send_idx >= len(ring_participants):
-            print("END TRANSMISSION.")
-            to_send_email = None
+        if ring_data.current_index < ring_data.ring_length:
+            ring_data.current_index += 1
+            next_person = ring_data.ring[ring_data.current_index]
+            self.send_data(next_person, ring_data)
         else:
-            to_send_email = ring_participants[to_send_idx]
+            self.terminate_ring(ring_data)
 
-        # Read the secret value from secret.txt
+        self.cleanup(file_path)
+
+    def cleanup(self, file_path: Path) -> None:
+        file_path.unlink()
+        print(f"Done processing {file_path}, removed from pending inputs")
+
+    def setup_folders(self) -> None:
+        print("Setting up the necessary folders.")
+        for folder in [self.running_folder, self.done_folder]:
+            folder.mkdir(parents=True, exist_ok=True)
+
+        # after this there will be files (so we can sync)
+        permission = SyftPermission.mine_with_public_write(self.my_email)
+        permission.ensure(self.ring_pipeline_path)  
+
+    def my_secret(self):
         with open(self.secret_file, "r") as secret_file:
-            secret_value = int(secret_file.read().strip())
+            return int(secret_file.read().strip())
 
-        # Increment datum by the secret value instead of 1
-        data["data"] = datum + secret_value
-        data["current_index"] = to_send_idx
-        os.remove(file_name)
-        return data, to_send_email
+    def pending_inputs_files(self) -> List[Path]:
+        return [self.running_folder / file for file in self.running_folder.glob("*.json")]
 
-    def data_writer(self, file_name, result):
-        # should make sure the folder exists here so that they don't need dummy files
-        folder_path = os.path.dirname(file_name)
+    def write_json(self, file_path: Path, result: RingData) -> None:
+        print(f"Writing to {file_path}.")
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(file_path, "w") as f:
+            f.write(result.model_dump_json())
 
-        if not os.path.exists(folder_path):
-            # less noisy since it only writes if needed
-            os.makedirs(folder_path, exist_ok=True)
+    def send_data(self, email: str, data: RingData) -> None:
+        destination_datasite_path = Path(self.client.sync_folder) / email
+        dest = destination_datasite_path / "app_pipelines" / "ring" / "running" / "data.json"
+        self.write_json(dest, data)
 
-        with open(file_name, "w") as f:
-            json.dump(result, f)
-
-    def send_to_new_person(self, to_send_email, datum):
-        output_path = (
-            Path(self.client_config.sync_folder)
-            / to_send_email
-            / "app_pipelines"
-            / "ring"
-            / "running"
-            / "data.json"
-        )
-        print(f"Writing to {output_path}.")
-        self.data_writer(output_path, datum)
-
-    def terminate_ring(self):
-        my_ring_runner.data_writer(self.done_folder / "data.json", datum)
+    def terminate_ring(self, data: RingData) -> None:
+        print(f"Terminating ring, writing back to {self.done_folder}")
+        self.write_json(self.done_folder / "data.json", data)
 
 
 if __name__ == "__main__":
-    # Start of script. Step 1. Setup any folders that may be necessary.
-    my_ring_runner = RingRunner()
-    my_ring_runner.setup_folders()
-    # Step 2. Check if you have received a data file in your input folder.
-    file_names = my_ring_runner.check_datafile_exists()
-    # Step 3. If you have found a data file, proceed. Else, nothing.
-    if len(file_names) > 0:
-        print("Found a data file! Let's go to work.")
-        # For this example, this will always be 1. But we can in theory do more complicated logic.
-        for file_name in file_names:
-            # Step 4. Read the data_file, increment the number and send it to the next person.
-            datum, to_send_email = my_ring_runner.data_read_and_increment(file_name)
-            # Step 5. If there is another person in the ring, send it to them. Else, terminate.
-            if to_send_email:
-                my_ring_runner.send_to_new_person(to_send_email, datum)
-            else:
-                my_ring_runner.terminate_ring()
-    else:
-        print("No data file found. As you were, soldier.")
+    runner = RingRunner()
+    runner.run()
+    
