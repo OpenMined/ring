@@ -7,3 +7,4 @@ else
     echo "Virtual environment already exists."
 fi
 uv pip install syftbox 
+uv run python main.py
