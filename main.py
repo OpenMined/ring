@@ -53,10 +53,11 @@ class RingRunner:
         ring_data = RingData.load_json(file_path)
 
         ring_data.data += self.my_secret()
+        next_index = ring_data.current_index + 1
 
-        if ring_data.current_index < ring_data.ring_length:
-            ring_data.current_index += 1
-            next_person = ring_data.ring[ring_data.current_index]
+        if next_index < ring_data.ring_length:
+            next_person = ring_data.ring[next_index]
+            ring_data.current_index = next_index
             self.send_data(next_person, ring_data)
         else:
             self.terminate_ring(ring_data)
