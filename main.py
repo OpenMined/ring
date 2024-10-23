@@ -4,7 +4,7 @@ from typing import List
 from syftbox.lib import Client, SyftPermission
 from pydantic import BaseModel
 from pydantic_core import from_json
-
+import shutil
 
 RING_APP_PATH = Path(os.path.abspath(__file__)).parent
 
@@ -73,10 +73,13 @@ class RingRunner:
 
     def setup_folders(self) -> None:
         print("Setting up the necessary folders.")
-        for folder in [self.running_folder, self.done_folder]:
-            folder.mkdir(parents=True, exist_ok=True)
-            with open(str(folder) + "/dummy", "w") as dummy_file:
-                dummy_file.write("\n")
+
+        if not self.running_folder.is_dir():
+            for folder in [self.running_folder, self.done_folder]:
+                folder.mkdir(parents=True, exist_ok=True)
+                with open(str(folder) + "/dummy", "w") as dummy_file:
+                    dummy_file.write("\n")
+            shutil.move("data.json", str(self.running_folder.parent) + "/data.json")
 
         # after this there will be files (so we can sync)
         permission = SyftPermission.mine_with_public_write(self.my_email)
