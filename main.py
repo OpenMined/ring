@@ -16,7 +16,7 @@ class RingData(BaseModel):
 
     @property
     def ring_length(self) -> int:
-        return len(self.ring)
+        return len(self.participants)
 
     @classmethod
     def load_json(cls, file):
