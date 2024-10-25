@@ -1,15 +1,16 @@
+import json
 import os
 from pathlib import Path
 from typing import List
 from syftbox.lib import Client, SyftPermission
-from pydantic import BaseModel
-from pydantic_core import from_json
+from dataclasses import dataclass, asdict
 import shutil
 
 RING_APP_PATH = Path(os.path.abspath(__file__)).parent
 
 
-class RingData(BaseModel):
+@dataclass
+class RingData():
     participants: list[str]
     data: int
     current_index: int
@@ -21,7 +22,7 @@ class RingData(BaseModel):
     @classmethod
     def load_json(cls, file):
         with open(file, "r") as f:
-            return cls(**from_json(f.read()))
+            return cls(**json.load(f))
 
 
 class RingRunner:
@@ -77,9 +78,9 @@ class RingRunner:
         if not self.running_folder.is_dir():
             for folder in [self.running_folder, self.done_folder]:
                 folder.mkdir(parents=True, exist_ok=True)
-                with open(str(folder) + "/dummy", "w") as dummy_file:
+                with open(folder / "dummy", "w") as dummy_file:
                     dummy_file.write("\n")
-            shutil.move("data.json", str(self.running_folder.parent) + "/data.json")
+            shutil.move("data.json", self.running_folder.parent / "data.json")
 
         # after this there will be files (so we can sync)
         permission = SyftPermission.mine_with_public_write(self.my_email)
@@ -98,7 +99,7 @@ class RingRunner:
         print(f"Writing to {file_path}.")
         file_path.parent.mkdir(parents=True, exist_ok=True)
         with open(file_path, "w") as f:
-            f.write(result.model_dump_json())
+            json.dump(asdict(result), f)
 
     def send_data(self, email: str, data: RingData) -> None:
         destination_datasite_path = Path(self.client.sync_folder) / email
