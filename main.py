@@ -1,12 +1,13 @@
 import os
 from pathlib import Path
+import shutil
 from typing import List
-from syftbox.lib import Client, SyftPermission
+from syftbox_sdk import SyftBoxContext
 from pydantic import BaseModel
 from pydantic_core import from_json
-import shutil
 
 RING_APP_PATH = Path(os.path.abspath(__file__)).parent
+INIT_DATA = Path(RING_APP_PATH / "data.json")
 
 
 class RingData(BaseModel):
@@ -26,18 +27,17 @@ class RingData(BaseModel):
 
 class RingRunner:
     def __init__(self):
-        self.client = Client.load()
-
-        self.my_email: str = self.client.email
+        self.client = SyftBoxContext.load()
 
         # this is where all the app state goes
-        self.ring_pipeline_path: Path = (
-            Path(self.client.datasite_path) / "app_pipelines" / "ring"
-        )
+        self.ring_data = self.client.get_app_data("ring")
+
         # this is where the pending inputs go
-        self.running_folder: Path = self.ring_pipeline_path / "running"
+        self.running_folder: Path = self.ring_data / "running"
+
         # this is where the final result goes of a completed ring
-        self.done_folder: Path = self.ring_pipeline_path / "done"
+        self.done_folder: Path = self.ring_data / "done"
+
         # this is your personal secret
         self.secret_file: Path = RING_APP_PATH / "secret.txt"
 
@@ -73,43 +73,28 @@ class RingRunner:
 
     def setup_folders(self) -> None:
         print("Setting up the necessary folders.")
+        self.client.make_dirs(self.running_folder, self.done_folder)
+        self.client.set_writable(self.ring_data)
 
-        if not self.running_folder.is_dir():
-            for folder in [self.running_folder, self.done_folder]:
-                folder.mkdir(parents=True, exist_ok=True)
-                with open(str(folder) + "/dummy", "w") as dummy_file:
-                    dummy_file.write("\n")
-            shutil.move("data.json", str(self.running_folder.parent) + "/data.json")
+        shutil.copy(INIT_DATA, self.running_folder / "data.json")
 
-        # after this there will be files (so we can sync)
-        permission = SyftPermission.mine_with_public_write(self.my_email)
-        permission.ensure(self.ring_pipeline_path)
-
-    def my_secret(self):
+    def my_secret(self) -> int:
         with open(self.secret_file, "r") as secret_file:
             return int(secret_file.read().strip())
 
     def pending_inputs_files(self) -> List[Path]:
-        return [
-            self.running_folder / file for file in self.running_folder.glob("*.json")
-        ]
+        return [path.absolute() for path in self.running_folder.glob("*.json")]
 
     def write_json(self, file_path: Path, result: RingData) -> None:
         print(f"Writing to {file_path}.")
         file_path.parent.mkdir(parents=True, exist_ok=True)
         with open(file_path, "w") as f:
-            f.write(result.model_dump_json())
+            f.write(result.model_dump_json(indent=2))
 
     def send_data(self, email: str, data: RingData) -> None:
-        destination_datasite_path = Path(self.client.sync_folder) / email
-        dest = (
-            destination_datasite_path
-            / "app_pipelines"
-            / "ring"
-            / "running"
-            / "data.json"
-        )
-        self.write_json(dest, data)
+        their_ring_data = self.client.get_app_data("ring", datasite=email)
+        their_running = their_ring_data / "running"
+        self.write_json(their_running / "data.json", data)
 
     def terminate_ring(self, data: RingData) -> None:
         print(f"Terminating ring, writing back to {self.done_folder}")

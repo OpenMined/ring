@@ -4,7 +4,13 @@
 uv venv
 
 # install requirements for the project
-uv pip install -r requirements.txt
+uv pip install -e ../syft/sdk
+
+. .venv/bin/activate
+
+which python
 
 # run app using python from venv
-uv run main.py
+python main.py
+
+deactivate
