@@ -32,15 +32,18 @@ class RingRunner:
         self.my_email: str = self.client.email
 
         # this is where all the app state goes
-        self.ring_pipeline_path: Path = (
+        self.ring_pipeline_folder: Path = (
             Path(self.client.datasite_path) / "app_pipelines" / "ring"
         )
         # this is where the pending inputs go
-        self.running_folder: Path = self.ring_pipeline_path / "running"
+        self.running_folder: Path = self.ring_pipeline_folder / "running"
         # this is where the final result goes of a completed ring
-        self.done_folder: Path = self.ring_pipeline_path / "done"
+        self.done_folder: Path = self.ring_pipeline_folder / "done"
         # this is your personal secret
         self.secret_file: Path = RING_APP_PATH / "secret.txt"
+        # this is a template that you can use as input, you just have to
+        # to drag it to the running folder in your pipeline folder
+        self.data_template_file: Path = RING_APP_PATH / "data.json"
 
     def run(self) -> None:
         self.setup_folders()
@@ -80,11 +83,11 @@ class RingRunner:
                 folder.mkdir(parents=True, exist_ok=True)
                 with open(folder / "dummy", "w") as dummy_file:
                     dummy_file.write("\n")
-            shutil.move("data.json", self.running_folder.parent / "data.json")
+            shutil.move(self.data_template_file, self.ring_pipeline_folder / "data.json")
 
         # after this there will be files (so we can sync)
         permission = SyftPermission.mine_with_public_write(self.my_email)
-        permission.ensure(self.ring_pipeline_path)
+        permission.ensure(self.ring_pipeline_folder)
 
     def my_secret(self):
         with open(self.secret_file, "r") as secret_file:
