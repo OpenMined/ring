@@ -83,7 +83,7 @@ class RingRunner:
                 folder.mkdir(parents=True, exist_ok=True)
                 with open(folder / "dummy", "w") as dummy_file:
                     dummy_file.write("\n")
-            shutil.move(self.data_template_file, self.ring_pipeline_folder / "data.json")
+            shutil.copy(self.data_template_file, self.ring_pipeline_folder / "data.json")
 
         # after this there will be files (so we can sync)
         permission = SyftPermission.mine_with_public_write(self.my_email)
