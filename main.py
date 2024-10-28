@@ -27,10 +27,10 @@ class RingData(BaseModel):
 
 class RingRunner:
     def __init__(self):
-        self.client = SyftBoxContext.load()
+        self.ctx = SyftBoxContext.load()
 
         # this is where all the app state goes
-        self.ring_data = self.client.get_app_data("ring")
+        self.ring_data = self.ctx.get_app_data("ring")
 
         # this is where the pending inputs go
         self.running_folder: Path = self.ring_data / "running"
@@ -73,8 +73,12 @@ class RingRunner:
 
     def setup_folders(self) -> None:
         print("Setting up the necessary folders.")
-        self.client.make_dirs(self.running_folder, self.done_folder)
-        self.client.set_writable(self.ring_data)
+        self.ctx.make_dirs(self.running_folder, self.done_folder)
+
+        # # set writable to everyone (default)
+        # but maybe we would want to restrict writes to ring participants?
+        # self.ctx.set_writable(self.ring_data, ring_data["participants"])
+        self.ctx.set_writable(self.ring_data)
 
         shutil.copy(INIT_DATA, self.running_folder / "data.json")
 
@@ -92,7 +96,7 @@ class RingRunner:
             f.write(result.model_dump_json(indent=2))
 
     def send_data(self, email: str, data: RingData) -> None:
-        their_ring_data = self.client.get_app_data("ring", datasite=email)
+        their_ring_data = self.ctx.get_app_data("ring", datasite=email)
         their_running = their_ring_data / "running"
         self.write_json(their_running / "data.json", data)
 
