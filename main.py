@@ -11,7 +11,7 @@ RING_APP_PATH = Path(os.path.abspath(__file__)).parent
 
 @dataclass
 class RingData():
-    participants: list[str]
+    participants: List[str]
     data: int
     current_index: int
 
