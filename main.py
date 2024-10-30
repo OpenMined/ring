@@ -26,7 +26,8 @@ setup_folders(RUNNING_FOLDER, DONE_FOLDER, RING_PIPELINE_FOLDER, DATA_TEMPLATE_F
 pending_inputs_files = [RUNNING_FOLDER / file for file in RUNNING_FOLDER.glob("*.json")]
 
 if len(pending_inputs_files) == 0:
-    sys.exit("No data file found. As you were, soldier.")
+    print("No data file found. As you were, soldier.")
+    sys.exit(0)
 
 file_path = pending_inputs_files[0]
 print(f"Found input {file_path}! Let's get to work.")
