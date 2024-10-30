@@ -1,5 +1,7 @@
 #!/bin/sh
 
+set -e
+
 # this will create venv from python version defined in .python-version
 uv venv
 
