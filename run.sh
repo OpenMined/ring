@@ -12,4 +12,8 @@ uv venv
 uv pip install -r requirements.txt
 
 # run app using python from venv
-uv run main.py
+echo "Running Ring with $(python3 --version) at '$(which python3)'"
+python3 main.py
+
+# deactivate the virtual environment
+deactivate
