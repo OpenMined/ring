@@ -32,7 +32,11 @@ if len(pending_inputs_files) == 0:
 file_path = pending_inputs_files[0]
 print(f"Found input {file_path}! Let's get to work.")
 
-ring_participants, data, current_index = load_ring_data(file_path)
+try:
+    ring_participants, data, current_index = load_ring_data(file_path)
+except Exception:
+    print("It seems something is not set. Skipping it for now")
+    exit()
 data += my_secret
 next_index = current_index + 1
 
