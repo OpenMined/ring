@@ -11,7 +11,7 @@ fi
 . .venv/bin/activate
 
 # install requirements for the project
-uv pip install --upgrade -r requirements.txt
+uv pip install --upgrade -r requirements.txt --quiet
 
 # run app using python from venv
 echo "Running Ring with $(python3 --version) at '$(which python3)'"
