@@ -15,7 +15,7 @@ uv pip install -U syftbox
 
 # # run app using python from venv
 echo "Running ring with $(python3 --version) at '$(which python3)'"
-uv run python3 main.py
+python3 main.py
 
 # # deactivate the virtual environment
 deactivate
