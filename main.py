@@ -15,7 +15,7 @@ client = Client.load()
 my_email: str = client.email
 
 RING_APP_PATH = Path(os.path.abspath(__file__)).parent
-RING_PIPELINE_FOLDER = Path(client.datasite_path) / "app_pipelines" / "ring"
+RING_PIPELINE_FOLDER = client.api_data("ring")
 RUNNING_FOLDER = RING_PIPELINE_FOLDER / "running"
 DONE_FOLDER = RING_PIPELINE_FOLDER / "done"
 SECRET_FILE = RING_APP_PATH / "secret.json"
@@ -43,9 +43,8 @@ next_index = current_index + 1
 if next_index < len(ring_participants):
     next_person = ring_participants[next_index]
     new_ring_data = create_ring_data(ring_participants, data, next_index)
-    receiver_path = Path(client.sync_folder) / next_person
-    dest = receiver_path / "app_pipelines" / "ring" / "running" / "data.json"
-    write_json(dest, new_ring_data)
+    receiver_ring_data = client.api_data("ring", datasite=next_person) / "running" / "data.json"
+    write_json(receiver_ring_data, new_ring_data)
 else:
     print(f"Terminating ring, writing back to {DONE_FOLDER}")
     final_ring_data = create_ring_data(ring_participants, data, current_index)
