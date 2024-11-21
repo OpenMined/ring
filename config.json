@@ -1,0 +1,16 @@
+{
+  "version": "0.1.0",
+  "app": {
+    "version": "0.1.0",
+    "run": {
+      "command": ["bash", "run.sh"],
+      "interval": "10"
+    },
+    "env": {},
+    "platforms": ["linux", "darwin"],
+    "pre_install": [],
+    "post_install": ["python", "input.py"],
+    "pre_update": [],
+    "post_update": []
+  }
+}
