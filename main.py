@@ -1,6 +1,6 @@
 import os, sys
 from pathlib import Path
-from syftbox.lib import Client
+from syft_core import Client
 from utils import load_json, write_json, setup_folders
 from typing import List
 
