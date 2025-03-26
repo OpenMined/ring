@@ -9,7 +9,7 @@ else
     echo "Virtual environment already exists."
 fi
 
-uv pip install -U syftbox
+uv pip install -U syft-core
 
 . .venv/bin/activate
 
