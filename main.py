@@ -1,4 +1,5 @@
-import os, sys
+import os
+import sys
 from pathlib import Path
 from syft_core import Client
 from utils import load_json, write_json, setup_folders
@@ -22,7 +23,7 @@ SECRET_FILE = RING_APP_PATH / "secret.json"
 DATA_TEMPLATE_FILE = RING_APP_PATH / "data.json"
 
 my_secret = load_json(SECRET_FILE)["data"]
-setup_folders(RUNNING_FOLDER, DONE_FOLDER, RING_PIPELINE_FOLDER, DATA_TEMPLATE_FILE, my_email)
+setup_folders(RUNNING_FOLDER, DONE_FOLDER, RING_PIPELINE_FOLDER, DATA_TEMPLATE_FILE, client)
 pending_inputs_files = [RUNNING_FOLDER / file for file in RUNNING_FOLDER.glob("*.json")]
 
 if len(pending_inputs_files) == 0:
