@@ -1,6 +1,7 @@
-import os, sys
+import os
+import sys
 from pathlib import Path
-from syftbox.lib import Client
+from syft_core import Client
 from utils import load_json, write_json, setup_folders
 from typing import List
 
@@ -15,14 +16,14 @@ client = Client.load()
 my_email: str = client.email
 
 RING_APP_PATH = Path(os.path.abspath(__file__)).parent
-RING_PIPELINE_FOLDER = client.api_data("ring")
+RING_PIPELINE_FOLDER = client.app_data("ring")
 RUNNING_FOLDER = RING_PIPELINE_FOLDER / "running"
 DONE_FOLDER = RING_PIPELINE_FOLDER / "done"
 SECRET_FILE = RING_APP_PATH / "secret.json"
 DATA_TEMPLATE_FILE = RING_APP_PATH / "data.json"
 
 my_secret = load_json(SECRET_FILE)["data"]
-setup_folders(RUNNING_FOLDER, DONE_FOLDER, RING_PIPELINE_FOLDER, DATA_TEMPLATE_FILE, my_email)
+setup_folders(RUNNING_FOLDER, DONE_FOLDER, RING_PIPELINE_FOLDER, DATA_TEMPLATE_FILE, client)
 pending_inputs_files = [RUNNING_FOLDER / file for file in RUNNING_FOLDER.glob("*.json")]
 
 if len(pending_inputs_files) == 0:
@@ -43,7 +44,7 @@ next_index = current_index + 1
 if next_index < len(ring_participants):
     next_person = ring_participants[next_index]
     new_ring_data = create_ring_data(ring_participants, data, next_index)
-    receiver_ring_data = client.api_data("ring", datasite=next_person) / "running" / "data.json"
+    receiver_ring_data = client.app_data("ring", datasite=next_person) / "running" / "data.json"
     write_json(receiver_ring_data, new_ring_data)
 else:
     print(f"Terminating ring, writing back to {DONE_FOLDER}")
